@@ -173,7 +173,18 @@ async def crawl_recursive_internal_links(
             urls_to_crawl = [
                 url
                 for url in urls_to_crawl
-                if ".action" not in url and start_domain in url and "$" not in url
+                if 
+                start_domain in url
+                and ".action" not in url
+                and "$" not in url
+                and "~" not in url
+                and "login" not in url
+                and "export" not in url
+                and "exportword" not in url
+                and "category" not in url
+                and "label" not in url
+                and "site" not in url
+                and "display" not in url
             ]
 
             results = await crawler.arun_many(

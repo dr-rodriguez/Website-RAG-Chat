@@ -5,16 +5,8 @@ import os
 
 # Import all the message part classes
 from pydantic_ai.messages import (
-    ModelMessage,
     ModelRequest,
     ModelResponse,
-    SystemPromptPart,
-    UserPromptPart,
-    TextPart,
-    ToolCallPart,
-    ToolReturnPart,
-    RetryPromptPart,
-    ModelMessagesTypeAdapter,
 )
 
 from rag_agent import agent, RAGDeps
