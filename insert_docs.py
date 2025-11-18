@@ -1,22 +1,17 @@
 """
 insert_docs.py
 --------------
-Command-line utility to crawl any URL using Crawl4AI, detect content type (sitemap, .txt, or regular page),
-use the appropriate crawl method, chunk the resulting Markdown into <1000 character blocks by header hierarchy,
-and insert all chunks into ChromaDB with metadata.
+Command-line utility to read markdown files from the output directory, chunk them into <1000 character blocks
+by header hierarchy, and insert all chunks into ChromaDB with metadata.
 
 Usage:
-    python insert_docs.py <URL> [--collection ...] [--db-dir ...] [--embedding-model ...]
+    python insert_docs.py [--output-dir ...] [--collection ...] [--db-dir ...] [--embedding-model ...]
 """
 import argparse
 import sys
 import re
-import asyncio
 from typing import List, Dict, Any
-from urllib.parse import urlparse, urldefrag
-from xml.etree import ElementTree
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
-import requests
+from pathlib import Path
 from utils import get_chroma_client, get_or_create_collection, add_documents_to_collection
 
 def smart_chunk_markdown(markdown: str, max_len: int = 1000) -> List[str]:
@@ -53,93 +48,65 @@ def smart_chunk_markdown(markdown: str, max_len: int = 1000) -> List[str]:
 
     return [c for c in final_chunks if c]
 
-def is_sitemap(url: str) -> bool:
-    return url.endswith('sitemap.xml') or 'sitemap' in urlparse(url).path
-
-def is_txt(url: str) -> bool:
-    return url.endswith('.txt')
-
-async def crawl_recursive_internal_links(start_urls, max_depth=3, max_concurrent=10) -> List[Dict[str,Any]]:
-    """Recursive crawl using logic from 5-crawl_recursive_internal_links.py. Returns list of dicts with url and markdown."""
-    browser_config = BrowserConfig(headless=True, verbose=False)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent
-    )
-
-    visited = set()
-
-    def normalize_url(url):
-        return urldefrag(url)[0]
-
-    current_urls = set([normalize_url(u) for u in start_urls])
-    results_all = []
-
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        for depth in range(max_depth):
-            urls_to_crawl = [normalize_url(url) for url in current_urls if normalize_url(url) not in visited]
-            if not urls_to_crawl:
-                break
-
-            results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
-            next_level_urls = set()
-
-            for result in results:
-                norm_url = normalize_url(result.url)
-                visited.add(norm_url)
-
-                if result.success and result.markdown:
-                    results_all.append({'url': result.url, 'markdown': result.markdown})
-                    for link in result.links.get("internal", []):
-                        next_url = normalize_url(link["href"])
-                        if next_url not in visited:
-                            next_level_urls.add(next_url)
-
-            current_urls = next_level_urls
-
-    return results_all
-
-async def crawl_markdown_file(url: str) -> List[Dict[str,Any]]:
-    """Crawl a .txt or markdown file using logic from 4-crawl_and_chunk_markdown.py."""
-    browser_config = BrowserConfig(headless=True)
-    crawl_config = CrawlerRunConfig()
-
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        result = await crawler.arun(url=url, config=crawl_config)
-        if result.success and result.markdown:
-            return [{'url': url, 'markdown': result.markdown}]
-        else:
-            print(f"Failed to crawl {url}: {result.error_message}")
-            return []
-
-def parse_sitemap(sitemap_url: str) -> List[str]:
-    resp = requests.get(sitemap_url)
-    urls = []
-
-    if resp.status_code == 200:
+def load_markdown_files(output_dir: str) -> List[Dict[str, str]]:
+    """Load markdown files from output directory, extracting frontmatter and content.
+    
+    Args:
+        output_dir: Directory containing markdown files
+        
+    Returns:
+        List of dicts with 'url' and 'markdown' keys
+    """
+    output_path = Path(output_dir)
+    if not output_path.exists():
+        print(f"Output directory '{output_dir}' does not exist.")
+        return []
+    
+    results = []
+    
+    # Find all .md files in the output directory
+    md_files = list(output_path.glob("*.md"))
+    
+    if not md_files:
+        print(f"No markdown files found in '{output_dir}'.")
+        return []
+    
+    for filepath in md_files:
         try:
-            tree = ElementTree.fromstring(resp.content)
-            urls = [loc.text for loc in tree.findall('.//{*}loc')]
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Parse YAML frontmatter
+            # Look for frontmatter between --- markers
+            frontmatter_pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)$'
+            match = re.match(frontmatter_pattern, content, re.DOTALL)
+            
+            if match:
+                frontmatter_text = match.group(1)
+                markdown_content = match.group(2)
+                
+                # Extract source_url from frontmatter
+                url_match = re.search(r'source_url:\s*(.+)', frontmatter_text)
+                if url_match:
+                    source_url = url_match.group(1).strip()
+                else:
+                    # Fallback: use filename if source_url not found
+                    source_url = str(filepath)
+            else:
+                # No frontmatter found, use entire content as markdown
+                markdown_content = content
+                source_url = str(filepath)
+            
+            if markdown_content.strip():
+                results.append({
+                    'url': source_url,
+                    'markdown': markdown_content
+                })
         except Exception as e:
-            print(f"Error parsing sitemap XML: {e}")
-
-    return urls
-
-async def crawl_batch(urls: List[str], max_concurrent: int = 10) -> List[Dict[str,Any]]:
-    """Batch crawl using logic from 3-crawl_sitemap_in_parallel.py."""
-    browser_config = BrowserConfig(headless=True, verbose=False)
-    crawl_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent
-    )
-
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        results = await crawler.arun_many(urls=urls, config=crawl_config, dispatcher=dispatcher)
-        return [{'url': r.url, 'markdown': r.markdown} for r in results if r.success and r.markdown]
+            print(f"Error reading {filepath}: {e}")
+            continue
+    
+    return results
 
 def extract_section_info(chunk: str) -> Dict[str, Any]:
     """Extracts headers and stats from a chunk."""
@@ -153,32 +120,24 @@ def extract_section_info(chunk: str) -> Dict[str, Any]:
     }
 
 def main():
-    parser = argparse.ArgumentParser(description="Insert crawled docs into ChromaDB")
-    parser.add_argument("url", help="URL to crawl (regular, .txt, or sitemap)")
+    parser = argparse.ArgumentParser(description="Insert markdown files from output directory into ChromaDB")
+    parser.add_argument("--output-dir", default="./output", help="Directory containing markdown files")
     parser.add_argument("--collection", default="docs", help="ChromaDB collection name")
     parser.add_argument("--db-dir", default="./chroma_db", help="ChromaDB directory")
     parser.add_argument("--embedding-model", default="all-MiniLM-L6-v2", help="Embedding model name")
     parser.add_argument("--chunk-size", type=int, default=1000, help="Max chunk size (chars)")
-    parser.add_argument("--max-depth", type=int, default=3, help="Recursion depth for regular URLs")
-    parser.add_argument("--max-concurrent", type=int, default=10, help="Max parallel browser sessions")
     parser.add_argument("--batch-size", type=int, default=100, help="ChromaDB insert batch size")
     args = parser.parse_args()
 
-    # Detect URL type
-    url = args.url
-    if is_txt(url):
-        print(f"Detected .txt/markdown file: {url}")
-        crawl_results = asyncio.run(crawl_markdown_file(url))
-    elif is_sitemap(url):
-        print(f"Detected sitemap: {url}")
-        sitemap_urls = parse_sitemap(url)
-        if not sitemap_urls:
-            print("No URLs found in sitemap.")
-            sys.exit(1)
-        crawl_results = asyncio.run(crawl_batch(sitemap_urls, max_concurrent=args.max_concurrent))
-    else:
-        print(f"Detected regular URL: {url}")
-        crawl_results = asyncio.run(crawl_recursive_internal_links([url], max_depth=args.max_depth, max_concurrent=args.max_concurrent))
+    # Load markdown files from output directory
+    print(f"Loading markdown files from '{args.output_dir}'...")
+    crawl_results = load_markdown_files(args.output_dir)
+    
+    if not crawl_results:
+        print("No markdown files found to process.")
+        sys.exit(1)
+    
+    print(f"Found {len(crawl_results)} markdown files.")
 
     # Chunk and collect metadata
     ids, documents, metadatas = [], [], []
