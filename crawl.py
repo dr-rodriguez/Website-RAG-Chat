@@ -125,11 +125,17 @@ async def crawl_recursive_internal_links(start_urls, max_depth=3, max_concurrent
     current_urls = set([normalize_url(u) for u in start_urls])
     results_all = []
 
+    # Get domain of the start URL
+    start_domain = urlparse(next(iter(current_urls))).netloc
+
     async with AsyncWebCrawler(config=browser_config) as crawler:
         for depth in range(max_depth):
             urls_to_crawl = [normalize_url(url) for url in current_urls if normalize_url(url) not in visited]
             if not urls_to_crawl:
                 break
+
+            # Clean up some URLs that are not relevant
+            urls_to_crawl = [url for url in urls_to_crawl if ".action" not in url and start_domain in url and "$" not in url]
 
             results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
             next_level_urls = set()
@@ -198,7 +204,7 @@ def main():
     parser.add_argument("url", help="URL to crawl (regular, .txt, or sitemap)")
     parser.add_argument("--output-dir", default="./output", help="Output directory for markdown files")
     parser.add_argument("--max-depth", type=int, default=3, help="Recursion depth for regular URLs")
-    parser.add_argument("--max-concurrent", type=int, default=5, help="Max parallel browser sessions")
+    parser.add_argument("--max-concurrent", type=int, default=3, help="Max parallel browser sessions")
     args = parser.parse_args()
 
     # Detect URL type and crawl

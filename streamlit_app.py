@@ -14,7 +14,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
     RetryPromptPart,
-    ModelMessagesTypeAdapter
+    ModelMessagesTypeAdapter,
 )
 
 from rag_agent import agent, RAGDeps
@@ -23,11 +23,12 @@ from utils import get_chroma_client
 load_dotenv()
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
 
+
 async def get_agent_deps():
     return RAGDeps(
         chroma_client=get_chroma_client("./chroma_db"),
         collection_name="docs",
-        embedding_model=EMBEDDING_MODEL
+        embedding_model=EMBEDDING_MODEL,
     )
 
 
@@ -38,19 +39,22 @@ def display_message_part(part):
     tool calls, tool returns, etc.
     """
     # user-prompt
-    if part.part_kind == 'user-prompt':
+    if part.part_kind == "user-prompt":
         with st.chat_message("user"):
             st.markdown(part.content)
     # text
-    elif part.part_kind == 'text':
+    elif part.part_kind == "text":
         with st.chat_message("assistant"):
-            st.markdown(part.content)             
+            st.markdown(part.content)
+
 
 async def run_agent_with_streaming(user_input):
     async with agent.run_stream(
-        user_input, deps=st.session_state.agent_deps, message_history=st.session_state.messages
+        user_input,
+        deps=st.session_state.agent_deps,
+        message_history=st.session_state.messages,
     ) as result:
-        async for message in result.stream_text(delta=True):  
+        async for message in result.stream_text(delta=True):
             yield message
 
     # Add the new messages to the chat history (including tool calls and responses)
@@ -63,6 +67,7 @@ async def run_agent_with_streaming(user_input):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
 async def main():
     st.title("ChromaDB Crawl4AI RAG AI Agent")
 
@@ -70,7 +75,7 @@ async def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "agent_deps" not in st.session_state:
-        st.session_state.agent_deps = await get_agent_deps()  
+        st.session_state.agent_deps = await get_agent_deps()
 
     # Display all messages from the conversation so far
     # Each message is either a ModelRequest or ModelResponse.
@@ -93,13 +98,13 @@ async def main():
             # Create a placeholder for the streaming text
             message_placeholder = st.empty()
             full_response = ""
-            
+
             # Properly consume the async generator with async for
             generator = run_agent_with_streaming(user_input)
             async for message in generator:
                 full_response += message
                 message_placeholder.markdown(full_response + "▌")
-            
+
             # Final response without the cursor
             message_placeholder.markdown(full_response)
 
