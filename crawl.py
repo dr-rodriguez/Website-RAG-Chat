@@ -138,7 +138,12 @@ async def crawl_recursive_internal_links(
     start_urls, max_depth=3, max_concurrent=5
 ) -> List[Dict[str, Any]]:
     """Recursive crawl using logic from 5-crawl_recursive_internal_links.py. Returns list of dicts with url and markdown."""
-    browser_config = BrowserConfig(headless=True, verbose=False)
+    browser_config = BrowserConfig(
+        headless=True,
+        verbose=False,
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        ignore_https_errors=True,
+    )
     run_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS, stream=False, markdown_generator=MD_GENERATOR
     )
@@ -156,8 +161,12 @@ async def crawl_recursive_internal_links(
     current_urls = set([normalize_url(u) for u in start_urls])
     results_all = []
 
-    # Get domain of the start URL
-    start_domain = urlparse(next(iter(current_urls))).netloc
+    # Get the base path of the start URL (everything except the last segment if it's a file, or the whole path if it's a directory)
+    start_url_parsed = urlparse(next(iter(current_urls)))
+    start_path = start_url_parsed.path
+    if not start_path.endswith("/"):
+        start_path = start_path.rsplit("/", 1)[0] + "/"
+    start_domain = f"{start_url_parsed.scheme}://{start_url_parsed.netloc}{start_path}"
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         for depth in range(max_depth):
@@ -173,8 +182,7 @@ async def crawl_recursive_internal_links(
             urls_to_crawl = [
                 url
                 for url in urls_to_crawl
-                if 
-                start_domain in url
+                if start_domain in url
                 and ".action" not in url
                 and "$" not in url
                 and "~" not in url
@@ -210,7 +218,11 @@ async def crawl_recursive_internal_links(
 
 async def crawl_markdown_file(url: str) -> List[Dict[str, Any]]:
     """Crawl a .txt or markdown file using logic from 4-crawl_and_chunk_markdown.py."""
-    browser_config = BrowserConfig(headless=True)
+    browser_config = BrowserConfig(
+        headless=True,
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        ignore_https_errors=True,
+    )
     crawl_config = CrawlerRunConfig(markdown_generator=MD_GENERATOR)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -240,7 +252,12 @@ async def crawl_batch(
     urls: List[str], max_concurrent: int = 10
 ) -> List[Dict[str, Any]]:
     """Batch crawl using logic from 3-crawl_sitemap_in_parallel.py."""
-    browser_config = BrowserConfig(headless=True, verbose=False)
+    browser_config = BrowserConfig(
+        headless=True,
+        verbose=False,
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        ignore_https_errors=True,
+    )
     crawl_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS, stream=False, markdown_generator=MD_GENERATOR
     )
