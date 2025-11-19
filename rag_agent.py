@@ -9,8 +9,7 @@ from typing import Optional
 
 import chromadb
 from dotenv import load_dotenv
-from pydantic_ai import RunContext
-from pydantic_ai.agent import Agent
+from pydantic_ai import RunContext, Agent
 
 from utils import (
     format_results_as_context,
