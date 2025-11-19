@@ -22,10 +22,11 @@ from utils import (
 # Load environment variables from .env file
 dotenv.load_dotenv()
 
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+# from pydantic_ai.providers.ollama import OllamaProvider
 
-QUERY_MODEL = os.getenv("QUERY_MODEL", "gemma3:12b")
+QUERY_MODEL = os.getenv("QUERY_MODEL", "llama3.2:3b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
@@ -40,9 +41,9 @@ class RAGDeps:
 
 
 # Create the model
-model = OpenAIChatModel(
+model = OpenAIModel(
     QUERY_MODEL,
-    provider=OllamaProvider(base_url=OLLAMA_BASE_URL),
+    provider=OpenAIProvider(base_url=OLLAMA_BASE_URL),
 )
 
 # Create the RAG agent
