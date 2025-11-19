@@ -17,7 +17,7 @@ from utils import get_chroma_client, get_or_create_collection, add_documents_to_
 from dotenv import load_dotenv
 
 load_dotenv()
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 
 def smart_chunk_markdown(markdown: str, max_len: int = 1000) -> List[str]:

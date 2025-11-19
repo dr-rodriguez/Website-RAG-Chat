@@ -23,7 +23,7 @@ from utils import (
 dotenv.load_dotenv()
 
 QUERY_MODEL = os.getenv("QUERY_MODEL", "gemma3:12b")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 
 @dataclass

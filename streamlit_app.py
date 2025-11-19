@@ -13,7 +13,7 @@ from rag_agent import agent, RAGDeps
 from utils import get_chroma_client
 
 load_dotenv()
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 
 async def get_agent_deps():

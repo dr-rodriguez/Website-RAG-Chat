@@ -11,7 +11,7 @@ from more_itertools import batched
 
 load_dotenv()
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 
 def get_chroma_client(persist_directory: str) -> chromadb.PersistentClient:
@@ -49,7 +49,7 @@ def get_or_create_collection(
     """
     # Create embedding function
     embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=embedding_model_name
+        model_name=embedding_model_name.replace(":", "-")
     )
 
     # Try to get the collection, create it if it doesn't exist
