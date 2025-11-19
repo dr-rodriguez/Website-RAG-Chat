@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import chromadb
-import dotenv
+from dotenv import load_dotenv
 from pydantic_ai import RunContext
 from pydantic_ai.agent import Agent
 
@@ -20,13 +20,14 @@ from utils import (
 )
 
 # Load environment variables from .env file
-dotenv.load_dotenv()
+load_dotenv()
 
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-# from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai.models.gemini import GeminiModel
 
-QUERY_MODEL = os.getenv("QUERY_MODEL", "llama3.2:3b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
@@ -41,14 +42,18 @@ class RAGDeps:
 
 
 # Create the model
-model = OpenAIModel(
-    QUERY_MODEL,
+model_ollama = OpenAIModel(
+    OLLAMA_MODEL,
     provider=OpenAIProvider(base_url=OLLAMA_BASE_URL),
+)
+
+model_google = GeminiModel(
+    GEMINI_MODEL,
 )
 
 # Create the RAG agent
 agent = Agent(
-    model,
+    model_google,  # use google or ollama here
     deps_type=RAGDeps,
     system_prompt="You are a helpful assistant that answers questions based on the provided documentation. "
     "Use the retrieve tool to get relevant information from the documentation before answering. "
