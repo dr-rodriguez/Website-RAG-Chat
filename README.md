@@ -22,3 +22,9 @@ Copy `.env.example` to `.env` and fill in the values.
 2. Run the RAG builder to chunk the documents and insert them into the ChromaDB database.
 3. Run the RAG agent to answer questions about the documents.
 
+### Run the RAG agent
+
+To run the RAG agent, use the following command:
+```bash
+streamlit run streamlit_app.py
+```
