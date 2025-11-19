@@ -208,4 +208,5 @@ __marimo__/
 
 # Extras
 output/
-.chroma_db/
+backup/
+chroma_db/

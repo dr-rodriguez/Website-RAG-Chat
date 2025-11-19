@@ -7,12 +7,18 @@ by header hierarchy, and insert all chunks into ChromaDB with metadata.
 Usage:
     python insert_docs.py [--output-dir ...] [--collection ...] [--db-dir ...] [--embedding-model ...]
 """
+import os
 import argparse
 import sys
 import re
 from typing import List, Dict, Any
 from pathlib import Path
 from utils import get_chroma_client, get_or_create_collection, add_documents_to_collection
+from dotenv import load_dotenv
+
+load_dotenv()
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma:300m")
+
 
 def smart_chunk_markdown(markdown: str, max_len: int = 1000) -> List[str]:
     """Hierarchically splits markdown by #, ##, ### headers, then by characters, to ensure all chunks < max_len."""
@@ -124,7 +130,7 @@ def main():
     parser.add_argument("--output-dir", default="./output", help="Directory containing markdown files")
     parser.add_argument("--collection", default="docs", help="ChromaDB collection name")
     parser.add_argument("--db-dir", default="./chroma_db", help="ChromaDB directory")
-    parser.add_argument("--embedding-model", default="all-MiniLM-L6-v2", help="Embedding model name")
+    parser.add_argument("--embedding-model", default=EMBEDDING_MODEL, help="Embedding model name")
     parser.add_argument("--chunk-size", type=int, default=1000, help="Max chunk size (chars)")
     parser.add_argument("--batch-size", type=int, default=100, help="ChromaDB insert batch size")
     args = parser.parse_args()

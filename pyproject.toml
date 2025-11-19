@@ -10,5 +10,7 @@ dependencies = [
     "pydantic-ai>=0.1.8",
     "python-dotenv==1.1.0",
     "streamlit>=1.45.0",
-    "playwright"
+    "playwright",
+    "more-itertools>=10.8.0",
+    "sentence-transformers>=5.1.2",
 ]
